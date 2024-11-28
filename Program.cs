@@ -1,13 +1,14 @@
 ﻿using System.Globalization;
 using System.Numerics;
 
-namespace LotoWinner
+namespace LottoWinner
 {
 	internal class Program
 	{
 		static void Main(string[] args)
 		{
-			var lottoGame = new LottoGame(9);
+			IFillingStrategy fillingStrategy = new DefaultFillingStrategy();
+			var lottoGame = new LottoGame(9, fillingStrategy);
 
 			Console.WriteLine("Categories:");
 			lottoGame.PrintCategories();

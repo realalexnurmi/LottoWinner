@@ -2,26 +2,28 @@
 using System.Numerics;
 using System.Collections.Generic;
 
-namespace LotoWinner
+namespace LottoWinner
 {
 	public class LottoGame
 	{
-		private int countOfColumns;
-		private int countOfNumbers;
-		private int countOfNumbersInField;
+		public int CountOfColumns { get; private set; }
+		public int CountOfNumbers { get; private set; }
+		public int CountOfNumbersInField { get; private set; }
 		private BigRational[] factorialCache;
 		private List<FieldCategory> fieldCategories = new List<FieldCategory>();
+		private IFillingStrategy fillingStrategy;
 
-		public LottoGame(int countOfColumns)
+		public LottoGame(int countOfColumns, IFillingStrategy fillingStrategy)
 		{
 			if (countOfColumns < 3 || countOfColumns > 9 || countOfColumns % 3 != 0)
 			{
 				throw new ArgumentException("Number of columns must be between 3 and 9 and divisible by 3.");
 			}
-			this.countOfColumns = countOfColumns;
-			this.countOfNumbers = countOfColumns * 10;
-			this.countOfNumbersInField = (countOfColumns / 3) * 5;
-			this.factorialCache = new BigRational[this.countOfNumbers + 2];
+			this.CountOfColumns = countOfColumns;
+			this.CountOfNumbers = countOfColumns * 10;
+			this.CountOfNumbersInField = (countOfColumns / 3) * 5;
+			this.factorialCache = new BigRational[this.CountOfNumbers + 2];
+			this.fillingStrategy = fillingStrategy;
 			InitializeFactorialCache();
 			InitializeFieldCategories();
 		}
@@ -58,27 +60,21 @@ namespace LotoWinner
 
 		private void InitializeFieldCategories()
 		{
-			// Определяем количество столбцов с одним и двумя числами
-			int maxColumnsWithTwoNumbers = countOfNumbersInField / 2;
-			int columnsWithOneNumber = countOfColumns - maxColumnsWithTwoNumbers;
+			int maxColumnsWithTwoNumbers = CountOfNumbersInField / 2;
+			int columnsWithOneNumber = CountOfColumns - maxColumnsWithTwoNumbers;
 
-			// Проверяем, что общее количество чисел равно countOfNumbersInField
-			while (columnsWithOneNumber + 2 * (countOfColumns - columnsWithOneNumber) != countOfNumbersInField)
+			while (columnsWithOneNumber + 2 * (CountOfColumns - columnsWithOneNumber) != CountOfNumbersInField)
 			{
 				columnsWithOneNumber++;
 				maxColumnsWithTwoNumbers--;
 			}
 
-			// Вычисляем количество возможных категорий полей
-			BigRational numberOfCategories = Combinations(countOfColumns, columnsWithOneNumber);
+			BigRational numberOfCategories = Combinations(CountOfColumns, columnsWithOneNumber);
 
-			// Создаем список структур категорий полей
 			GenerateUniqueCategories(columnsWithOneNumber, (int)numberOfCategories);
 
-			// Сортируем категории по количеству возможных полей
 			fieldCategories = fieldCategories.OrderByDescending(c => c.CountValidFields).ToList();
 
-			// Проставляем ранги
 			int currentRank = 1;
 			fieldCategories[0].Rang = currentRank;
 			for (int i = 1; i < fieldCategories.Count; i++)
@@ -91,9 +87,14 @@ namespace LotoWinner
 			}
 		}
 
+		public IReadOnlyList<FieldCategory> GetFieldCategories()
+		{
+			return fieldCategories.AsReadOnly();
+		}
+
 		private void GenerateUniqueCategories(int columnsWithOneNumber, int numberOfCategories)
 		{
-			var allColumns = Enumerable.Range(1, countOfColumns).ToList();
+			var allColumns = Enumerable.Range(1, CountOfColumns).ToList();
 			var combinations = new List<List<int>>();
 
 			GenerateCombinations(allColumns, columnsWithOneNumber, 0, new List<int>(), combinations);
@@ -124,7 +125,6 @@ namespace LotoWinner
 		{
 			BigRational totalCombinations = 0;
 
-			// Вычисляем количество возможных полей внутри каждой категории
 			foreach (var category in fieldCategories)
 			{
 				totalCombinations += category.CountValidFields;
@@ -136,7 +136,7 @@ namespace LotoWinner
 		public BigRational CalculateWinningProbabilityOnFirstWinStep()
 		{
 			BigRational CV = CalculateTotalValidFields();
-			BigRational TC = Combinations(countOfNumbers, countOfNumbersInField);
+			BigRational TC = Combinations(CountOfNumbers, CountOfNumbersInField);
 
 			return CV / TC;
 		}
@@ -151,21 +151,32 @@ namespace LotoWinner
 			}
 		}
 
-		private class FieldCategory
+		public LottoTicket GenerateTicket()
+		{
+			var existingNumbers = new List<int>();
+			LottoField field1 = GenerateField(existingNumbers);
+			LottoField field2 = GenerateField(existingNumbers.Concat(field1.Numbers).ToList());
+			return new LottoTicket(field1, field2);
+		}
+
+		private LottoField GenerateField(List<int> existingNumbers)
+		{
+			return new LottoField(this, fillingStrategy, existingNumbers);
+		}
+
+		public class FieldCategory
 		{
 			public List<int> ColumnsWithOneNumber { get; private set; }
-			private LottoGame game;
+			public LottoGame Game { get; private set; }
 			private BigRational countValidFields;
+			public int Rang { get; set; }
 
-			private int rang;
-			public int Rang { get => rang; set => rang = value; }
 			public BigRational CountValidFields => countValidFields;
-
 
 			public FieldCategory(List<int> columnsWithOneNumber, LottoGame game)
 			{
 				ColumnsWithOneNumber = new List<int>(columnsWithOneNumber);
-				this.game = game;
+				this.Game = game;
 				countValidFields = CalculateValidFields();
 			}
 
@@ -173,22 +184,20 @@ namespace LotoWinner
 			{
 				BigRational categoryCombinations = 1;
 
-				// Вычисляем количество комбинаций для столбцов с одним числом
 				foreach (var col in ColumnsWithOneNumber)
 				{
 					int start = (col - 1) * 10 + (col == 1 ? 1 : 0);
-					int end = (col == 1) ? 9 : (col == game.countOfColumns) ? game.countOfNumbers : start + 9;
-					categoryCombinations *= game.Combinations(end - start + 1, 1);
+					int end = (col == 1) ? 9 : (col == Game.CountOfColumns) ? Game.CountOfNumbers : start + 9;
+					categoryCombinations *= Game.Combinations(end - start + 1, 1);
 				}
 
-				// Вычисляем количество комбинаций для столбцов с двумя числами
-				for (int col = 1; col <= game.countOfColumns; col++)
+				for (int col = 1; col <= Game.CountOfColumns; col++)
 				{
 					if (!ColumnsWithOneNumber.Contains(col))
 					{
 						int start = (col - 1) * 10 + (col == 1 ? 1 : 0);
-						int end = (col == 1) ? 9 : (col == game.countOfColumns) ? game.countOfNumbers : start + 9;
-						categoryCombinations *= game.Combinations(end - start + 1, 2);
+						int end = (col == 1) ? 9 : (col == Game.CountOfColumns) ? Game.CountOfNumbers : start + 9;
+						categoryCombinations *= Game.Combinations(end - start + 1, 2);
 					}
 				}
 
@@ -202,7 +211,7 @@ namespace LotoWinner
 				{
 					Console.Write(col + " ");
 				}
-				Console.Write("] Valid fileds: " + CountValidFields);
+				Console.Write("] Valid fields: " + CountValidFields);
 				Console.WriteLine();
 			}
 		}
