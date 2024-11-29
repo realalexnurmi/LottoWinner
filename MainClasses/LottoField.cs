@@ -8,15 +8,14 @@ namespace LottoWinner
 {
 	public class LottoField
 	{
+		public LottoGame Game { get; private set; }
 		public LottoGame.FieldCategory Category { get; private set; }
 		public List<int> Numbers { get; private set; }
-
 		public Dictionary<int, bool> NumberStates { get; private set; }
-		private LottoGame game;
 
 		public LottoField(LottoGame game, IFieldProperty fieldProperty, List<int> existingNumbers)
 		{
-			this.game = game;
+			this.Game = game;
 			Numbers = fieldProperty.GenerateNumbers(existingNumbers);
 			Category = DetermineCategory(game);
 			NumberStates = Numbers.ToDictionary(number => number, number => false);
@@ -88,8 +87,8 @@ namespace LottoWinner
 
 		public void Print()
 		{
-			var columns = new List<int>[game.FieldProperty.CountOfColumns];
-			for (int i = 0; i < game.FieldProperty.CountOfColumns; i++)
+			var columns = new List<int>[Game.FieldProperty.CountOfColumns];
+			for (int i = 0; i < Game.FieldProperty.CountOfColumns; i++)
 			{
 				columns[i] = new List<int>();
 			}

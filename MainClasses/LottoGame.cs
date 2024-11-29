@@ -213,24 +213,64 @@ namespace LottoWinner
 			}
 		}
 
-		private int StartGame(bool silent)
+public void RunSeriesInParallel(int countSeries, int countGamesPerSeries)
+{
+    Parallel.For(0, countSeries, seriesIndex =>
+    {
+        RunSeries(countGamesPerSeries);
+    });
+}
+
+private void RunSeries(int countGamesPerSeries)
+{
+    var seriesWins = new Dictionary<int, int>();
+
+    foreach (var player in players)
+    {
+        var seriesTickets = player.CloneTickets();
+        seriesWins[player.PlayerNumber] = 0; // Инициализация счетчика побед для каждого игрока
+
+        Parallel.For(0, countGamesPerSeries, gameIndex =>
+        {
+            int winner = StartGame(true, seriesTickets);
+            lock (seriesWins)
+            {
+                seriesWins[winner]++;
+            }
+        });
+    }
+
+    lock (Console.Out)
+    {
+        Console.WriteLine("Series Game Statistics:");
+        foreach (var kvp in seriesWins)
+        {
+            double winPercentage = (double)kvp.Value / countGamesPerSeries * 100;
+            Console.WriteLine($"Player {kvp.Key} won {kvp.Value} times ({winPercentage:F2}%).");
+        }
+    }
+}
+
+		private int StartGame(bool silent, List<LottoTicket> seriesTickets)
 		{
 			var random = new Random();
 			var allNumbers = Enumerable.Range(1, FieldProperty.CountOfNumbers).ToList();
 			var drawnNumbers = new HashSet<int>();
 
 			// Сброс состояний перед началом новой игры
-			foreach (var player in players)
+			foreach (var ticket in seriesTickets)
 			{
-				foreach (var ticket in player.GetTickets())
-				{
-					ticket.Field1.ResetNumberStates();
-					ticket.Field2.ResetNumberStates();
-				}
+				ticket.Field1.ResetNumberStates();
+				ticket.Field2.ResetNumberStates();
 			}
 
 			while (true)
 			{
+				if (allNumbers.Count == 0)
+				{
+					throw new InvalidOperationException("No more numbers to draw.");
+				}
+
 				int drawnNumber = allNumbers[random.Next(allNumbers.Count)];
 				drawnNumbers.Add(drawnNumber);
 				allNumbers.Remove(drawnNumber);
@@ -240,96 +280,29 @@ namespace LottoWinner
 					Console.WriteLine($"Drawn number: {drawnNumber}");
 				}
 
-				foreach (var player in players)
+				foreach (var ticket in seriesTickets)
 				{
-					foreach (var ticket in player.GetTickets())
+					ticket.Field1.MarkNumberAsDrawn(drawnNumber);
+					if (ticket.Field1.AreAllNumbersDrawn())
 					{
-						ticket.Field1.MarkNumberAsDrawn(drawnNumber);
-						if (ticket.Field1.AreAllNumbersDrawn())
+						if (!silent)
 						{
-							if (!silent)
-							{
-								Console.WriteLine($"Player {player.PlayerNumber} wins with ticket {ticket.TicketNumber}!");
-							}
-							return player.PlayerNumber;
+							Console.WriteLine($"Player {ticket.TicketNumber.Value / 1000} wins with ticket {ticket.TicketNumber}!");
 						}
+						return ticket.TicketNumber.Value / 1000;
+					}
 
-						ticket.Field2.MarkNumberAsDrawn(drawnNumber);
-						if (ticket.Field2.AreAllNumbersDrawn())
+					ticket.Field2.MarkNumberAsDrawn(drawnNumber);
+					if (ticket.Field2.AreAllNumbersDrawn())
+					{
+						if (!silent)
 						{
-							if (!silent)
-							{
-								Console.WriteLine($"Player {player.PlayerNumber} wins with ticket {ticket.TicketNumber}!");
-							}
-							return player.PlayerNumber;
+							Console.WriteLine($"Player {ticket.TicketNumber.Value / 1000} wins with ticket {ticket.TicketNumber}!");
 						}
+						return ticket.TicketNumber.Value / 1000;
 					}
 				}
 			}
-		}
-
-
-		public Dictionary<int, int> Run(int countGames, bool silent = true)
-		{
-			var playerWins = new Dictionary<int, int>();
-
-			foreach (var player in players)
-			{
-				player.GetAllTickets();
-				playerWins[player.PlayerNumber] = 0; // Инициализация счетчика побед для каждого игрока
-			}
-
-			for (int i = 0; i < countGames; i++)
-			{
-				int winner = StartGame(silent);
-				playerWins[winner]++;
-			}
-
-			if (!silent)
-			{
-				Console.WriteLine("Game Statistics:");
-				foreach (var kvp in playerWins)
-				{
-					double winPercentage = (double)kvp.Value / countGames * 100;
-					Console.WriteLine($"Player {kvp.Key} won {kvp.Value} times ({winPercentage:F2}%).");
-				}
-			}
-
-			return playerWins;
-		}
-
-		public void RunRuns(int countRuns, int countGames)
-		{
-			var aggregatedWins = new Dictionary<int, int>();
-
-			foreach (var player in players)
-			{
-				aggregatedWins[player.PlayerNumber] = 0; // Инициализация счетчика побед для каждого игрока
-			}
-
-			for (int i = 0; i < countRuns; i++)
-			{
-				var runWins = Run(countGames);
-				foreach (var kvp in runWins)
-				{
-					aggregatedWins[kvp.Key] += kvp.Value;
-				}
-			}
-
-			Console.WriteLine("Aggregated Game Statistics:");
-			foreach (var kvp in aggregatedWins)
-			{
-				double winPercentage = (double)kvp.Value / (countRuns * countGames) * 100;
-				Console.WriteLine($"Player {kvp.Key} won {kvp.Value} times ({winPercentage:F2}%).");
-			}
-		}
-
-		public BigRational CalculateWinningProbabilityOnFirstWinStep()
-		{
-			BigRational CV = CalculateTotalValidFields();
-			BigRational TC = Combinations(FieldProperty.CountOfNumbers, FieldProperty.CountOfNumbersInField);
-
-			return CV / TC;
 		}
 	}
 }

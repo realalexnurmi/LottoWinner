@@ -19,6 +19,14 @@ namespace LottoWinner
 			Rank = CalculateRank();
 		}
 
+		public LottoTicket(LottoTicket other)
+		{
+			Field1 = new LottoField(other.Field1.Game, other.Field1.Game.FieldProperty, other.Field1.Numbers);
+			Field2 = new LottoField(other.Field2.Game, other.Field2.Game.FieldProperty, other.Field2.Numbers);
+			TicketNumber = other.TicketNumber;
+			Rank = other.Rank;
+		}
+
 		private int CalculateRank()
 		{
 			return Field1.Category.Rang * Field2.Category.Rang;

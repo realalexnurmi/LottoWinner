@@ -36,6 +36,16 @@ namespace LottoWinner
 			game.AddPlayer(this);
 		}
 
+		public LottoPlayer ClonePlayer()
+		{
+			return new LottoPlayer(game, strategy);
+		}
+
+		public List<LottoTicket> CloneTickets()
+		{
+			return tickets.Select(ticket => new LottoTicket(ticket)).ToList();
+		}
+
 		public LottoPlayer SetDesiredTicketCount(int count)
 		{
 			DesiredTicketCount = count;
