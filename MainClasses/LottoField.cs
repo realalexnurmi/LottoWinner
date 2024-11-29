@@ -10,6 +10,8 @@ namespace LottoWinner
 	{
 		public LottoGame.FieldCategory Category { get; private set; }
 		public List<int> Numbers { get; private set; }
+
+		public Dictionary<int, bool> NumberStates { get; private set; }
 		private LottoGame game;
 
 		public LottoField(LottoGame game, IFieldProperty fieldProperty, List<int> existingNumbers)
@@ -17,6 +19,28 @@ namespace LottoWinner
 			this.game = game;
 			Numbers = fieldProperty.GenerateNumbers(existingNumbers);
 			Category = DetermineCategory(game);
+			NumberStates = Numbers.ToDictionary(number => number, number => false);
+		}
+
+		public void ResetNumberStates()
+		{
+			foreach (var key in NumberStates.Keys)
+			{
+				NumberStates[key] = false;
+			}
+		}
+
+		public void MarkNumberAsDrawn(int number)
+		{
+			if (NumberStates.ContainsKey(number))
+			{
+				NumberStates[number] = true;
+			}
+		}
+
+		public bool AreAllNumbersDrawn()
+		{
+			return NumberStates.Values.All(state => state);
 		}
 
 		private LottoGame.FieldCategory DetermineCategory(LottoGame game)

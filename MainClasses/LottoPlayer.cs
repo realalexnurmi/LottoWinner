@@ -12,6 +12,7 @@ namespace LottoWinner
 		private List<LottoTicket> tickets = new List<LottoTicket>();
 		private LottoGame game;
 		public int PlayerNumber { get; private set; }
+		public int DesiredTicketCount { get; private set; }
 
 		public LottoPlayer(LottoGame game, ITicketStrategy strategy)
 		{
@@ -33,6 +34,12 @@ namespace LottoWinner
 				}
 			}
 			game.AddPlayer(this);
+		}
+
+		public LottoPlayer SetDesiredTicketCount(int count)
+		{
+			DesiredTicketCount = count;
+			return this;
 		}
 
 		public void SetNumber(int number)
@@ -72,6 +79,11 @@ namespace LottoWinner
 			{
 				GetTicket();
 			}
+		}
+
+		public void GetAllTickets()
+		{
+			GetNTickets(DesiredTicketCount);
 		}
 
 		public void ShowTickets()

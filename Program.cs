@@ -9,17 +9,10 @@ namespace LottoWinner
 		{
 			LottoGame game = new LottoGame(new DefaultRulesFieldProperty(9));
 
-			LottoPlayer player1 = new LottoPlayer(game, new MinRankTicketStrategy(1));
-			LottoPlayer player2 = new LottoPlayer(game, new SpecificNumbersTicketStrategy());
-			LottoPlayer player3 = new LottoPlayer(game, new SpecificNumbersTicketStrategy(new List<int> { 5, 10, 15 }));
-			LottoPlayer player4 = new LottoPlayer(game, new AnyTicketStrategy());
+			new LottoPlayer(game, new MinRankTicketStrategy(1)).SetDesiredTicketCount(10);
+			new LottoPlayer(game, new AnyTicketStrategy()).SetDesiredTicketCount(1000);
 
-			player1.GetNTickets(3);
-			player2.GetNTickets(3);
-			player3.GetNTickets(3);
-			player4.GetNTickets(3);
-
-			game.ShowPlayers();
+			game.RunRuns(10, 1000);
 		}
 	}
 }
