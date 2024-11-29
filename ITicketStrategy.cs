@@ -9,5 +9,6 @@ namespace LottoWinner
 	public interface ITicketStrategy
 	{
 		bool IsRightTicket(LottoTicket ticket);
+		string StrategyName { get; }
 	}
 }

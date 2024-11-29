@@ -58,10 +58,10 @@ namespace LottoWinner
 
 		public void GetTicket()
 		{
-			LottoTicket ticket = game.GenerateTicket();
+			LottoTicket ticket = game.GenerateTicket(PlayerNumber, tickets.Count);
 			while (!strategy.IsRightTicket(ticket))
 			{
-				ticket = game.GenerateTicket();
+				ticket = game.GenerateTicket(PlayerNumber, tickets.Count);
 			}
 			tickets.Add(ticket);
 		}
@@ -76,7 +76,7 @@ namespace LottoWinner
 
 		public void ShowTickets()
 		{
-			Console.WriteLine($"Player № {PlayerNumber} has the following tickets:");
+			Console.WriteLine($"Player № {PlayerNumber} ({strategy.StrategyName}) has the following tickets:");
 
 			if (strategy is SpecificNumbersTicketStrategy specificStrategy && !specificStrategy.IsEmpty())
 			{

@@ -9,6 +9,7 @@ namespace LottoWinner
 	public class SpecificNumbersTicketStrategy : ITicketStrategy
 	{
 		private List<int> requiredNumbers;
+		public string StrategyName => "Specific Numbers";
 
 		public SpecificNumbersTicketStrategy()
 		{

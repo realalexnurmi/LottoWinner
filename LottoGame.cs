@@ -152,6 +152,13 @@ namespace LottoWinner
 			return new LottoTicket(field1, field2);
 		}
 
+		public LottoTicket GenerateTicket(int first, int second)
+		{
+			var ticket = GenerateTicket();
+			ticket.TicketNumber = first * 1000 + second;
+			return ticket;
+		}
+
 		private LottoField GenerateField(List<int> existingNumbers)
 		{
 			return new LottoField(this, FieldProperty, existingNumbers);

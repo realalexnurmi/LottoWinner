@@ -9,6 +9,7 @@ namespace LottoWinner
 	public class MinRankTicketStrategy : ITicketStrategy
 	{
 		private int minRank;
+		public string StrategyName => "Min Rank";
 
 		public MinRankTicketStrategy(int minRank)
 		{

@@ -8,6 +8,7 @@ namespace LottoWinner
 {
 	public class AnyTicketStrategy : ITicketStrategy
 	{
+		public string StrategyName => "Any Ticket";
 		public bool IsRightTicket(LottoTicket ticket)
 		{
 			return true;
