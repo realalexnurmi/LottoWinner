@@ -21,5 +21,16 @@ namespace LottoWinner
 		{
 			return Field1.Category.Rang * Field2.Category.Rang;
 		}
+
+		public void Print()
+		{
+			Console.WriteLine(new string('-', 30));
+			Console.WriteLine($"Ticket № ___  Rang: {Rank}");
+			Console.WriteLine("Field 1:");
+			Field1.Print();
+			Console.WriteLine("Field 2:");
+			Field2.Print();
+			Console.WriteLine(new string('-', 30));
+		}
 	}
 }

@@ -6,24 +6,14 @@ namespace LottoWinner
 {
 	public class LottoGame
 	{
-		public int CountOfColumns { get; private set; }
-		public int CountOfNumbers { get; private set; }
-		public int CountOfNumbersInField { get; private set; }
+		public IFieldProperty FieldProperty { get; private set; }
 		private BigRational[] factorialCache;
 		private List<FieldCategory> fieldCategories = new List<FieldCategory>();
-		private IFillingStrategy fillingStrategy;
 
-		public LottoGame(int countOfColumns, IFillingStrategy fillingStrategy)
+		public LottoGame(IFieldProperty fieldProperty)
 		{
-			if (countOfColumns < 3 || countOfColumns > 9 || countOfColumns % 3 != 0)
-			{
-				throw new ArgumentException("Number of columns must be between 3 and 9 and divisible by 3.");
-			}
-			this.CountOfColumns = countOfColumns;
-			this.CountOfNumbers = countOfColumns * 10;
-			this.CountOfNumbersInField = (countOfColumns / 3) * 5;
-			this.factorialCache = new BigRational[this.CountOfNumbers + 2];
-			this.fillingStrategy = fillingStrategy;
+			this.FieldProperty = fieldProperty;
+			this.factorialCache = new BigRational[this.FieldProperty.CountOfNumbers + 2];
 			InitializeFactorialCache();
 			InitializeFieldCategories();
 		}
@@ -60,18 +50,10 @@ namespace LottoWinner
 
 		private void InitializeFieldCategories()
 		{
-			int maxColumnsWithTwoNumbers = CountOfNumbersInField / 2;
-			int columnsWithOneNumber = CountOfColumns - maxColumnsWithTwoNumbers;
+			int columnsWithOneNumber = FieldProperty.ColumnsWithOneNumber;
+			int columnsWithTwoNumbers = FieldProperty.ColumnsWithTwoNumbers;
 
-			while (columnsWithOneNumber + 2 * (CountOfColumns - columnsWithOneNumber) != CountOfNumbersInField)
-			{
-				columnsWithOneNumber++;
-				maxColumnsWithTwoNumbers--;
-			}
-
-			BigRational numberOfCategories = Combinations(CountOfColumns, columnsWithOneNumber);
-
-			GenerateUniqueCategories(columnsWithOneNumber, (int)numberOfCategories);
+			GenerateUniqueCategories(columnsWithOneNumber, columnsWithTwoNumbers);
 
 			fieldCategories = fieldCategories.OrderByDescending(c => c.CountValidFields).ToList();
 
@@ -87,14 +69,9 @@ namespace LottoWinner
 			}
 		}
 
-		public IReadOnlyList<FieldCategory> GetFieldCategories()
+		private void GenerateUniqueCategories(int columnsWithOneNumber, int columnsWithTwoNumbers)
 		{
-			return fieldCategories.AsReadOnly();
-		}
-
-		private void GenerateUniqueCategories(int columnsWithOneNumber, int numberOfCategories)
-		{
-			var allColumns = Enumerable.Range(1, CountOfColumns).ToList();
+			var allColumns = Enumerable.Range(1, FieldProperty.CountOfColumns).ToList();
 			var combinations = new List<List<int>>();
 
 			GenerateCombinations(allColumns, columnsWithOneNumber, 0, new List<int>(), combinations);
@@ -136,7 +113,7 @@ namespace LottoWinner
 		public BigRational CalculateWinningProbabilityOnFirstWinStep()
 		{
 			BigRational CV = CalculateTotalValidFields();
-			BigRational TC = Combinations(CountOfNumbers, CountOfNumbersInField);
+			BigRational TC = Combinations(FieldProperty.CountOfNumbers, FieldProperty.CountOfNumbersInField);
 
 			return CV / TC;
 		}
@@ -161,13 +138,18 @@ namespace LottoWinner
 
 		private LottoField GenerateField(List<int> existingNumbers)
 		{
-			return new LottoField(this, fillingStrategy, existingNumbers);
+			return new LottoField(this, FieldProperty, existingNumbers);
+		}
+
+		public IReadOnlyList<FieldCategory> GetFieldCategories()
+		{
+			return fieldCategories.AsReadOnly();
 		}
 
 		public class FieldCategory
 		{
 			public List<int> ColumnsWithOneNumber { get; private set; }
-			public LottoGame Game { get; private set; }
+			private LottoGame game;
 			private BigRational countValidFields;
 			public int Rang { get; set; }
 
@@ -176,7 +158,7 @@ namespace LottoWinner
 			public FieldCategory(List<int> columnsWithOneNumber, LottoGame game)
 			{
 				ColumnsWithOneNumber = new List<int>(columnsWithOneNumber);
-				this.Game = game;
+				this.game = game;
 				countValidFields = CalculateValidFields();
 			}
 
@@ -187,17 +169,17 @@ namespace LottoWinner
 				foreach (var col in ColumnsWithOneNumber)
 				{
 					int start = (col - 1) * 10 + (col == 1 ? 1 : 0);
-					int end = (col == 1) ? 9 : (col == Game.CountOfColumns) ? Game.CountOfNumbers : start + 9;
-					categoryCombinations *= Game.Combinations(end - start + 1, 1);
+					int end = (col == 1) ? 9 : (col == game.FieldProperty.CountOfColumns) ? game.FieldProperty.CountOfNumbers : start + 9;
+					categoryCombinations *= game.Combinations(end - start + 1, 1);
 				}
 
-				for (int col = 1; col <= Game.CountOfColumns; col++)
+				for (int col = 1; col <= game.FieldProperty.CountOfColumns; col++)
 				{
 					if (!ColumnsWithOneNumber.Contains(col))
 					{
 						int start = (col - 1) * 10 + (col == 1 ? 1 : 0);
-						int end = (col == 1) ? 9 : (col == Game.CountOfColumns) ? Game.CountOfNumbers : start + 9;
-						categoryCombinations *= Game.Combinations(end - start + 1, 2);
+						int end = (col == 1) ? 9 : (col == game.FieldProperty.CountOfColumns) ? game.FieldProperty.CountOfNumbers : start + 9;
+						categoryCombinations *= game.Combinations(end - start + 1, 2);
 					}
 				}
 

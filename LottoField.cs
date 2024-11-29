@@ -10,28 +10,18 @@ namespace LottoWinner
 	{
 		public LottoGame.FieldCategory Category { get; private set; }
 		public List<int> Numbers { get; private set; }
+		private LottoGame game;
 
-		public LottoField(LottoGame game, IFillingStrategy fillingStrategy, List<int> existingNumbers)
+		public LottoField(LottoGame game, IFieldProperty fieldProperty, List<int> existingNumbers)
 		{
-			Numbers = fillingStrategy.GenerateNumbers(game, existingNumbers);
+			this.game = game;
+			Numbers = fieldProperty.GenerateNumbers(existingNumbers);
 			Category = DetermineCategory(game);
 		}
 
 		private LottoGame.FieldCategory DetermineCategory(LottoGame game)
 		{
-			foreach (var category in game.GetFieldCategories())
-			{
-				if (IsCategoryMatch(category))
-				{
-					return category;
-				}
-			}
-			throw new InvalidOperationException("No matching category found for the field.");
-		}
-
-		private bool IsCategoryMatch(LottoGame.FieldCategory category)
-		{
-			var columnCounts = new int[category.Game.CountOfColumns];
+			var columnCounts = new int[game.FieldProperty.CountOfColumns];
 
 			foreach (var number in Numbers)
 			{
@@ -39,23 +29,82 @@ namespace LottoWinner
 				columnCounts[column - 1]++;
 			}
 
-			foreach (var col in category.ColumnsWithOneNumber)
+			foreach (var category in game.GetFieldCategories())
 			{
-				if (columnCounts[col - 1] != 1)
+				bool match = true;
+				foreach (var col in category.ColumnsWithOneNumber)
 				{
-					return false;
+					if (columnCounts[col - 1] != 1)
+					{
+						match = false;
+						break;
+					}
+				}
+
+				if (match)
+				{
+					for (int col = 1; col <= game.FieldProperty.CountOfColumns; col++)
+					{
+						if (!category.ColumnsWithOneNumber.Contains(col) && columnCounts[col - 1] != 2)
+						{
+							match = false;
+							break;
+						}
+					}
+				}
+
+				if (match)
+				{
+					return category;
 				}
 			}
 
-			for (int col = 1; col <= category.Game.CountOfColumns; col++)
+			throw new InvalidOperationException("No matching category found for the field.");
+		}
+
+		public void Print()
+		{
+			var columns = new List<int>[game.FieldProperty.CountOfColumns];
+			for (int i = 0; i < game.FieldProperty.CountOfColumns; i++)
 			{
-				if (!category.ColumnsWithOneNumber.Contains(col) && columnCounts[col - 1] != 2)
-				{
-					return false;
-				}
+				columns[i] = new List<int>();
 			}
 
-			return true;
+			foreach (var number in Numbers)
+			{
+				int column = (number - 1) / 10;
+				columns[column].Add(number);
+			}
+
+			Console.WriteLine($"R:{Category.Rang,2}──┬──┬──┬──┬──┬──┬──┬──┐");
+			Console.Write("│");
+			for (int i = 0; i < columns.Length; i++)
+			{
+				if (columns[i].Count > 0)
+				{
+					Console.Write($"{columns[i][0],2}│");
+				}
+				else
+				{
+					Console.Write("  │");
+				}
+			}
+			Console.WriteLine();
+			Console.WriteLine("├──┼──┼──┼──┼──┼──┼──┼──┼──┤");
+			Console.Write("│");
+			for (int i = 0; i < columns.Length; i++)
+			{
+				if (columns[i].Count > 1)
+				{
+					Console.Write($"{columns[i][1],2}│");
+				}
+				else
+				{
+					Console.Write("  │");
+				}
+			}
+			Console.WriteLine();
+			Console.WriteLine("└──┴──┴──┴──┴──┴──┴──┴──┴──┘");
 		}
 	}
 }

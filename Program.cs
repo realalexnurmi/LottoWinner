@@ -7,13 +7,14 @@ namespace LottoWinner
 	{
 		static void Main(string[] args)
 		{
-			IFillingStrategy fillingStrategy = new DefaultFillingStrategy();
-			var lottoGame = new LottoGame(9, fillingStrategy);
+			IFieldProperty fieldProperty = new DefaultRulesFieldProperty(9);
+			LottoGame game = new LottoGame(fieldProperty);
 
-			Console.WriteLine("Categories:");
-			lottoGame.PrintCategories();
-			Console.WriteLine("Total Valid Fields: " + lottoGame.CalculateTotalValidFields().ToString("F"));
-			Console.WriteLine("Probability on first possible Win Step: " + ((double)lottoGame.CalculateWinningProbabilityOnFirstWinStep()).ToString("P3", CultureInfo.InvariantCulture));
+			for (int i = 0; i < 10; i++)
+			{
+				LottoTicket ticket = game.GenerateTicket();
+				ticket.Print();
+			}
 		}
 	}
 }
