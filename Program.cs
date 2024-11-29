@@ -5,16 +5,21 @@ namespace LottoWinner
 {
 	internal class Program
 	{
-		static void Main(string[] args)
+		public static void Main(string[] args)
 		{
-			IFieldProperty fieldProperty = new DefaultRulesFieldProperty(9);
-			LottoGame game = new LottoGame(fieldProperty);
+			LottoGame game = new LottoGame(new DefaultRulesFieldProperty(9));
 
-			for (int i = 0; i < 10; i++)
-			{
-				LottoTicket ticket = game.GenerateTicket();
-				ticket.Print();
-			}
+			LottoPlayer player1 = new LottoPlayer(game, new MinRankTicketStrategy(1));
+			LottoPlayer player2 = new LottoPlayer(game, new SpecificNumbersTicketStrategy());
+			LottoPlayer player3 = new LottoPlayer(game, new SpecificNumbersTicketStrategy(new List<int> { 5, 10, 15 }));
+			LottoPlayer player4 = new LottoPlayer(game, new AnyTicketStrategy());
+
+			player1.GetNTickets(3);
+			player2.GetNTickets(3);
+			player3.GetNTickets(3);
+			player4.GetNTickets(3);
+
+			game.ShowPlayers();
 		}
 	}
 }

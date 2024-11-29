@@ -9,6 +9,7 @@ namespace LottoWinner
 		public IFieldProperty FieldProperty { get; private set; }
 		private BigRational[] factorialCache;
 		private List<FieldCategory> fieldCategories = new List<FieldCategory>();
+		private List<LottoPlayer> players = new List<LottoPlayer>();
 
 		public LottoGame(IFieldProperty fieldProperty)
 		{
@@ -32,6 +33,12 @@ namespace LottoWinner
 			return factorialCache[n];
 		}
 
+		public void AddPlayer(LottoPlayer player)
+		{
+			players.Add(player);
+			player.SetNumber(players.Count);
+		}
+
 		public BigRational Combinations(int n, int k)
 		{
 			if (k == 0 || k == n)
@@ -46,6 +53,15 @@ namespace LottoWinner
 			BigRational result = Factorial(n) / (Factorial(k) * Factorial(n - k));
 
 			return result;
+		}
+
+		public void ShowPlayers()
+		{
+			foreach (var player in players)
+			{
+				player.ShowTickets();
+				Console.WriteLine(new string('-', 30));
+			}
 		}
 
 		private void InitializeFieldCategories()
