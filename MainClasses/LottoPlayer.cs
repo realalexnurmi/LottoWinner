@@ -18,7 +18,13 @@ namespace LottoWinner
 		{
 			this.game = game;
 			this.strategy = strategy;
-			if (strategy is SpecificNumbersTicketStrategy specificStrategy)
+
+            if (strategy is IInitializableTicketStrategy initializableStrategy)
+            {
+                initializableStrategy.Initialize();
+            }
+
+            if (strategy is SpecificNumbersTicketStrategy specificStrategy)
 			{
 				var invalidNumbers = specificStrategy.GetInvalidNumbers(1, game.FieldProperty.CountOfNumbers);
 
@@ -85,6 +91,12 @@ namespace LottoWinner
 		{
 			GetNTickets(DesiredTicketCount);
 		}
+
+		public void DropAllTickets()
+		{
+			tickets.Clear();
+		}
+
 
 		public void ShowTickets()
 		{

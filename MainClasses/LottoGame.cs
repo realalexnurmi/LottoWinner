@@ -10,8 +10,17 @@ namespace LottoWinner
 		private BigRational[] factorialCache;
 		private List<FieldCategory> fieldCategories = new List<FieldCategory>();
 		private List<LottoPlayer> players = new List<LottoPlayer>();
+        private Dictionary<int, int> playerWins = new Dictionary<int, int>();
+        private Dictionary<int, int> playerJointWins = new Dictionary<int, int>();
+        private Dictionary<int, int> winnerCountStatistics = new Dictionary<int, int>();
+        private Dictionary<string, int> jointWinnersStatistics = new Dictionary<string, int>();
+        private Dictionary<int, int> aggregatedPlayerWins = new Dictionary<int, int>();
+        private Dictionary<int, int> aggregatedPlayerJointWins = new Dictionary<int, int>();
+        private Dictionary<int, int> aggregatedWinnerCountStatistics = new Dictionary<int, int>();
+        private Dictionary<string, int> aggregatedJointWinnersStatistics = new Dictionary<string, int>();
 
-		public LottoGame(IFieldProperty fieldProperty)
+
+        public LottoGame(IFieldProperty fieldProperty)
 		{
 			this.FieldProperty = fieldProperty;
 			this.factorialCache = new BigRational[this.FieldProperty.CountOfNumbers + 2];
@@ -213,118 +222,221 @@ namespace LottoWinner
 			}
 		}
 
-		private int StartGame(bool silent)
-		{
-			var random = new Random();
-			var allNumbers = Enumerable.Range(1, FieldProperty.CountOfNumbers).ToList();
-			var drawnNumbers = new HashSet<int>();
+        private List<int> StartGame(bool silent)
+        {
+            var random = new Random();
+            var allNumbers = Enumerable.Range(1, FieldProperty.CountOfNumbers).ToList();
+            var drawnNumbers = new HashSet<int>();
 
-			// Сброс состояний перед началом новой игры
-			foreach (var player in players)
-			{
-				foreach (var ticket in player.GetTickets())
-				{
-					ticket.Field1.ResetNumberStates();
-					ticket.Field2.ResetNumberStates();
-				}
-			}
+            // Сброс состояний перед началом новой игры
+            foreach (var player in players)
+            {
+                foreach (var ticket in player.GetTickets())
+                {
+                    ticket.Field1.ResetNumberStates();
+                    ticket.Field2.ResetNumberStates();
+                }
+            }
 
-			while (true)
-			{
-				int drawnNumber = allNumbers[random.Next(allNumbers.Count)];
-				drawnNumbers.Add(drawnNumber);
-				allNumbers.Remove(drawnNumber);
+            while (true)
+            {
+                int drawnNumber = allNumbers[random.Next(allNumbers.Count)];
+                drawnNumbers.Add(drawnNumber);
+                allNumbers.Remove(drawnNumber);
 
-				if (!silent)
-				{
-					Console.WriteLine($"Drawn number: {drawnNumber}");
-				}
+                if (!silent)
+                {
+                    Console.WriteLine($"Drawn number: {drawnNumber}");
+                }
 
-				foreach (var player in players)
-				{
-					foreach (var ticket in player.GetTickets())
-					{
-						ticket.Field1.MarkNumberAsDrawn(drawnNumber);
-						if (ticket.Field1.AreAllNumbersDrawn())
-						{
-							if (!silent)
-							{
-								Console.WriteLine($"Player {player.PlayerNumber} wins with ticket {ticket.TicketNumber}!");
-							}
-							return player.PlayerNumber;
-						}
+                var winners = new HashSet<int>();
 
-						ticket.Field2.MarkNumberAsDrawn(drawnNumber);
-						if (ticket.Field2.AreAllNumbersDrawn())
-						{
-							if (!silent)
-							{
-								Console.WriteLine($"Player {player.PlayerNumber} wins with ticket {ticket.TicketNumber}!");
-							}
-							return player.PlayerNumber;
-						}
-					}
-				}
-			}
-		}
+                foreach (var player in players)
+                {
+                    foreach (var ticket in player.GetTickets())
+                    {
+                        ticket.Field1.MarkNumberAsDrawn(drawnNumber);
+                        if (ticket.Field1.AreAllNumbersDrawn())
+                        {
+                            winners.Add(player.PlayerNumber);
+                        }
+
+                        ticket.Field2.MarkNumberAsDrawn(drawnNumber);
+                        if (ticket.Field2.AreAllNumbersDrawn())
+                        {
+                            winners.Add(player.PlayerNumber);
+                        }
+                    }
+                }
+
+                if (winners.Count > 0)
+                {
+                    if (!silent)
+                    {
+                        Console.WriteLine($"Winners: {string.Join(", ", winners)}");
+                    }
+                    return winners.ToList();
+                }
+            }
+        }
 
 
-		public Dictionary<int, int> Run(int countGames, bool silent = true)
-		{
-			var playerWins = new Dictionary<int, int>();
+        public Dictionary<int, int> Run(int countGames, bool silent = true)
+        {
+            playerWins.Clear();
+            playerJointWins.Clear();
+            winnerCountStatistics.Clear();
+            jointWinnersStatistics.Clear();
 
-			foreach (var player in players)
-			{
-				player.GetAllTickets();
-				playerWins[player.PlayerNumber] = 0; // Инициализация счетчика побед для каждого игрока
-			}
+            foreach (var player in players)
+            {
+                player.GetAllTickets();
+                playerWins[player.PlayerNumber] = 0; // Инициализация счетчика побед для каждого игрока
+                playerJointWins[player.PlayerNumber] = 0; // Инициализация счетчика совместных побед для каждого игрока
+            }
 
-			for (int i = 0; i < countGames; i++)
-			{
-				int winner = StartGame(silent);
-				playerWins[winner]++;
-			}
+            if (!silent)
+            {
+                this.ShowPlayers();
+                Console.WriteLine($"Ready for {countGames} games. Press enter.");
+                Console.ReadLine();
+            }
 
-			if (!silent)
-			{
-				Console.WriteLine("Game Statistics:");
-				foreach (var kvp in playerWins)
-				{
-					double winPercentage = (double)kvp.Value / countGames * 100;
-					Console.WriteLine($"Player {kvp.Key} won {kvp.Value} times ({winPercentage:F2}%).");
-				}
-			}
+            for (int i = 0; i < countGames; i++)
+            {
+                var winners = StartGame(silent);
+                int winnerCount = winners.Count;
 
-			return playerWins;
-		}
+                if (!winnerCountStatistics.ContainsKey(winnerCount))
+                {
+                    winnerCountStatistics[winnerCount] = 0;
+                }
+                winnerCountStatistics[winnerCount]++;
 
-		public void RunRuns(int countRuns, int countGames)
-		{
-			var aggregatedWins = new Dictionary<int, int>();
+                if (winnerCount == 1)
+                {
+                    playerWins[winners[0]]++;
+                }
+                else
+                {
+                    var winnersKey = string.Join(",", winners.OrderBy(w => w));
+                    if (!jointWinnersStatistics.ContainsKey(winnersKey))
+                    {
+                        jointWinnersStatistics[winnersKey] = 0;
+                    }
+                    jointWinnersStatistics[winnersKey]++;
 
-			foreach (var player in players)
-			{
-				aggregatedWins[player.PlayerNumber] = 0; // Инициализация счетчика побед для каждого игрока
-			}
+                    foreach (var winner in winners)
+                    {
+                        playerJointWins[winner]++;
+                    }
+                }
+            }
 
-			for (int i = 0; i < countRuns; i++)
-			{
-				var runWins = Run(countGames);
-				foreach (var kvp in runWins)
-				{
-					aggregatedWins[kvp.Key] += kvp.Value;
-				}
-			}
+            if (!silent)
+            {
+                Console.WriteLine("Game Statistics:");
+                foreach (var kvp in playerWins)
+                {
+                    double winPercentage = (double)kvp.Value / countGames * 100;
+                    Console.WriteLine($"Player {kvp.Key} won {kvp.Value} times ({winPercentage:F2}%).");
+                }
 
-			Console.WriteLine("Aggregated Game Statistics:");
-			foreach (var kvp in aggregatedWins)
-			{
-				double winPercentage = (double)kvp.Value / (countRuns * countGames) * 100;
-				Console.WriteLine($"Player {kvp.Key} won {kvp.Value} times ({winPercentage:F2}%).");
-			}
-		}
+                Console.WriteLine("Joint Winners Statistics:");
+                foreach (var kvp in jointWinnersStatistics)
+                {
+                    double winPercentage = (double)kvp.Value / countGames * 100;
+                    Console.WriteLine($"{kvp.Key} winners: {kvp.Value} times ({winPercentage:F2}%).");
+                }
 
-		public BigRational CalculateWinningProbabilityOnFirstWinStep()
+                Console.WriteLine("Winner Count Statistics:");
+                foreach (var kvp in winnerCountStatistics)
+                {
+                    double winPercentage = (double)kvp.Value / countGames * 100;
+                    Console.WriteLine($"{kvp.Key} winners: {kvp.Value} times ({winPercentage:F2}%).");
+                }
+            }
+
+            return playerWins;
+        }
+
+        public void RunRuns(int countRuns, int countGames, bool silent = true)
+        {
+            aggregatedPlayerWins.Clear();
+            aggregatedPlayerJointWins.Clear();
+            aggregatedWinnerCountStatistics.Clear();
+            aggregatedJointWinnersStatistics.Clear();
+
+            foreach (var player in players)
+            {
+                aggregatedPlayerWins[player.PlayerNumber] = 0; // Инициализация счетчика побед для каждого игрока
+                aggregatedPlayerJointWins[player.PlayerNumber] = 0; // Инициализация счетчика совместных побед для каждого игрока
+            }
+
+            for (int i = 0; i < countRuns; i++)
+            {
+                var runWins = Run(countGames, silent);
+                var runJointWins = playerJointWins;
+                var runWinnerCountStats = winnerCountStatistics;
+                var runJointWinnersStats = jointWinnersStatistics;
+
+                foreach (var kvp in runWins)
+                {
+                    aggregatedPlayerWins[kvp.Key] += kvp.Value;
+                }
+
+                foreach (var kvp in runJointWins)
+                {
+                    aggregatedPlayerJointWins[kvp.Key] += kvp.Value;
+                }
+
+                foreach (var kvp in runWinnerCountStats)
+                {
+                    if (!aggregatedWinnerCountStatistics.ContainsKey(kvp.Key))
+                    {
+                        aggregatedWinnerCountStatistics[kvp.Key] = 0;
+                    }
+                    aggregatedWinnerCountStatistics[kvp.Key] += kvp.Value;
+                }
+
+                foreach (var kvp in runJointWinnersStats)
+                {
+                    if (!aggregatedJointWinnersStatistics.ContainsKey(kvp.Key))
+                    {
+                        aggregatedJointWinnersStatistics[kvp.Key] = 0;
+                    }
+                    aggregatedJointWinnersStatistics[kvp.Key] += kvp.Value;
+                }
+
+                foreach (var player in players)
+                {
+                    player.DropAllTickets();
+                }
+            }
+
+            Console.WriteLine("Aggregated Game Statistics:");
+            foreach (var kvp in aggregatedPlayerWins)
+            {
+                double winPercentage = (double)kvp.Value / (countRuns * countGames) * 100;
+                Console.WriteLine($"Player {kvp.Key} won {kvp.Value} times ({winPercentage:F2}%).");
+            }
+
+            Console.WriteLine("Aggregated Joint Winners Statistics:");
+            foreach (var kvp in aggregatedJointWinnersStatistics)
+            {
+                double winPercentage = (double)kvp.Value / (countRuns * countGames) * 100;
+                Console.WriteLine($"{kvp.Key} winners: {kvp.Value} times ({winPercentage:F2}%).");
+            }
+
+            Console.WriteLine("Aggregated Winner Count Statistics:");
+            foreach (var kvp in aggregatedWinnerCountStatistics)
+            {
+                double winPercentage = (double)kvp.Value / (countRuns * countGames) * 100;
+                Console.WriteLine($"{kvp.Key} winners: {kvp.Value} times ({winPercentage:F2}%).");
+            }
+        }
+
+        public BigRational CalculateWinningProbabilityOnFirstWinStep()
 		{
 			BigRational CV = CalculateTotalValidFields();
 			BigRational TC = Combinations(FieldProperty.CountOfNumbers, FieldProperty.CountOfNumbersInField);

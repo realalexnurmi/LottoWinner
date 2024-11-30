@@ -12,7 +12,7 @@ namespace LottoWinner
 		public List<int> Numbers { get; private set; }
 
 		public Dictionary<int, bool> NumberStates { get; private set; }
-		private LottoGame game;
+		private readonly LottoGame game;
 
 		public LottoField(LottoGame game, IFieldProperty fieldProperty, List<int> existingNumbers)
 		{

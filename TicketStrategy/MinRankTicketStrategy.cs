@@ -18,7 +18,7 @@ namespace LottoWinner
 
 		public bool IsRightTicket(LottoTicket ticket)
 		{
-			return ticket.Rank >= minRank;
+			return ticket.Rank <= minRank;
 		}
 	}
 }
