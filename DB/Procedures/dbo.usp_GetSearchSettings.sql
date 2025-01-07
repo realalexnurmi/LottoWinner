@@ -183,6 +183,51 @@ BEGIN
 		DEALLOCATE CUR
 	END
 
+	-- Исправление ситуации, когда для одинарных колонок одного номера колонки отобраны только исключающие варианты для двойных колонок
+	;WITH SuspiciousColumns AS
+	(
+		SELECT ColNum FROM @PriorityColumns
+		WHERE	(ColNum IN (SELECT FC FROM @PriorityFieldTypes) OR ColNum IN (SELECT FC FROM @PriorityFieldTypes))
+				AND Num2 IS NOT NULL
+	)
+	,ConfirmedBadColumns AS
+	(
+		SELECT ColNum FROM SuspiciousColumns
+		WHERE ColNum NOT IN
+			(
+				SELECT One.ColNum FROM @PriorityColumns AS One
+				LEFT JOIN @PriorityColumns AS Two ON One.ColNum = Two.ColNum
+				WHERE 
+					One.ColNum IN (SELECT ColNum FROM SuspiciousColumns) AND One.Num2 IS NULL AND Two.Num2 IS NOT NULL
+					AND
+					One.Num1 != Two.Num1 AND One.Num1 != Two.Num2
+			)
+	)
+	,DataFromConfirmed AS
+	(
+		SELECT ColNum, Num1 FROM @PriorityColumns
+		WHERE ColNum IN (SELECT ColNum FROM ConfirmedBadColumns)
+		GROUP BY ColNum, Num1
+	)
+	,PretendentColumns AS
+	(
+		SELECT ColumnNumber, Number_1, Number_2, ROW_NUMBER() OVER (PARTITION BY ColumnNumber ORDER BY MaxRank.Value DESC) AS RN FROM [dbo].[T_Columns] AS MAIN
+		CROSS APPLY
+		(
+			SELECT MAX([dbo].[udf_GetRankColumn](ColumnID)) AS Value FROM [dbo].[T_Columns]
+			WHERE
+				ColumnNumber = MAIN.ColumnNumber AND Number_2 IS NOT NULL
+				AND Number_1 NOT IN (SELECT Num1 FROM DataFromConfirmed)
+				AND Number_2 NOT IN (SELECT Num1 FROM DataFromConfirmed)
+		) AS MaxRank
+		WHERE ColumnNumber IN (SELECT ColNum FROM DataFromConfirmed) AND Number_2 IS NOT NULL AND [dbo].[udf_GetRankColumn](ColumnID) = MaxRank.Value
+	)
+	INSERT INTO @PriorityColumns (ColNum, Num1, Num2)
+	SELECT ColumnNumber, Number_1, Number_2 
+	FROM PretendentColumns
+	WHERE RN = 1
+	
+
 	-- Общее донасыщение вариантов двойных колонок, на случай если существует вариант для номера колонки, когда выбор его исключает выбор остальных вариантов колонок
 	;WITH TroubleCols AS
 	(
